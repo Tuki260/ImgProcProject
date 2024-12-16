@@ -43,7 +43,7 @@ void addGaussianNoise(const Mat& input, Mat& output, double mean, double stddev)
 
 int main() {
     // Load an image
-    string imagePath = "image.jpg"; // Replace with your image path
+    string imagePath = "Pictures/cat.jpg"; // Replace with your image path
     Mat image = imread(imagePath);
 
     if (image.empty()) {
