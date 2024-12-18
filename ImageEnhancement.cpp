@@ -27,16 +27,38 @@ void adjustBrightnessContrast(const Mat& input, Mat& output, double alpha, int b
         }
     }
 }
-
-// Function to equalize histogram (grayscale images only)
 void histogramEqualization(const Mat& input, Mat& output) 
 {
-    if (input.channels() == 1) 
-    {
-        equalizeHist(input, output);
-    } 
-    else 
-    {
+    if (input.channels() == 1) {
+        // Step 1: Calculate the histogram
+        int hist[256] = {0};
+        for (int i = 0; i < input.rows; i++) {
+            for (int j = 0; j < input.cols; j++) {
+                hist[input.at<uchar>(i, j)]++;
+            }
+        }
+
+        // Step 2: Compute the cumulative distribution function (CDF)
+        int cdf[256] = {0};
+        cdf[0] = hist[0];
+        for (int i = 1; i < 256; i++) {
+            cdf[i] = cdf[i - 1] + hist[i];
+        }
+
+        // Step 3: Normalize the CDF
+        int totalPixels = input.rows * input.cols;
+        for (int i = 0; i < 256; i++) {
+            cdf[i] = (cdf[i] - cdf[0]) * 255 / (totalPixels - cdf[0]);
+        }
+
+        // Step 4: Map the pixel values using the CDF
+        output = input.clone();
+        for (int i = 0; i < input.rows; i++) {
+            for (int j = 0; j < input.cols; j++) {
+                output.at<uchar>(i, j) = cdf[input.at<uchar>(i, j)];
+            }
+        }
+    } else {
         cout << "Histogram equalization works only on grayscale images." << endl;
         output = input.clone();
     }
@@ -170,6 +192,7 @@ int main() {
                 cout<< "Error: Non-Odd Number entered"<<endl;
                 return -1;
             }
+            kernelSize = abs(kernelSize);
             imshow("Original Image", image);
             Mat blurredImage;
             applyGaussianBlur(image, blurredImage, kernelSize);
@@ -189,7 +212,21 @@ int main() {
         {
             // Adding Gaussian noise
             Mat noisyImage;
-            double mean = 0, stddev = 30; // Noise parameters
+            cout<< "Input your Mean value: ";
+            double mean, stddev; // Noise parameters
+            cin>> mean;
+            if(cin.fail())
+            {
+                cout<< "Error: Non-integer value";
+                return -1;
+            }
+            cout<< "Input your standard deviation value: ";
+            cin>> stddev;
+            if(cin.fail())
+            {
+                cout<< "Error: Non-integer value";
+                return -1;
+            }
             imshow("Original Image", image);
             addGaussianNoise(image, noisyImage, mean, stddev);
             imshow("Gaussian Noise Added", noisyImage);
