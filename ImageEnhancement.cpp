@@ -1,14 +1,31 @@
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include <cctype>
+#include <vector>
 
 using namespace cv;
 using namespace std;
 
 // Function to adjust brightness and contrast
-void adjustBrightnessContrast(const Mat& input, Mat& output, double alpha, int beta) {
-    // alpha: contrast multiplier, beta: brightness offset
-    input.convertTo(output, -1, alpha, beta);
+void adjustBrightnessContrast(const Mat& input, Mat& output, double alpha, int beta) 
+{
+    // Ensure the output matrix is the same size and type as input
+    output = input.clone();
+
+    // Loop through each pixel in the input image
+    for (int i = 0; i < input.rows; i++)
+    {
+        for (int j = 0; j < input.cols; j++) 
+        {
+            for (int c = 0; c < input.channels(); c++) 
+            {
+                // Adjust the pixel value based on the formula output(x,y)=α⋅input(x,y)+β
+                int pixelValue = static_cast<int>(alpha * input.at<Vec3b>(i, j)[c] + beta);
+                // Ensure pixel values are within a valid range of [0, 255]
+                output.at<Vec3b>(i, j)[c] = saturate_cast<uchar>(pixelValue);
+            }
+        }
+    }
 }
 
 // Function to equalize histogram (grayscale images only)
@@ -40,6 +57,39 @@ void sharpenImage(const Mat& input, Mat& output) {
     filter2D(input, output, -1, kernel);
 }
 
+void boxBlur(const Mat& input, Mat& output)
+{
+    Mat kernel3 = (Mat_<float>(3, 3) << 
+                   1/9.0, 1/9.0, 1/9.0, 
+                   1/9.0, 1/9.0, 1/9.0, 
+                   1/9.0, 1/9.0, 1/9.0);
+    Mat kernel5 = (Mat_<float>(5, 5) << 
+               1/25.0, 1/25.0, 1/25.0, 1/25.0, 1/25.0, 
+               1/25.0, 1/25.0, 1/25.0, 1/25.0, 1/25.0, 
+               1/25.0, 1/25.0, 1/25.0, 1/25.0, 1/25.0, 
+               1/25.0, 1/25.0, 1/25.0, 1/25.0, 1/25.0, 
+               1/25.0, 1/25.0, 1/25.0, 1/25.0, 1/25.0);
+    int choice;
+    cout<<"Please choose between a 3x3 box blur(3), or a 5x5 box blur(5)" << endl << "A 5x5 box blur results in more blurring: ";
+    cin>> choice;
+    if(cin.fail())
+    {
+        cout<< "Error: Not valid choice, please select 3 or 5";
+    }
+    else if(choice == 3)
+    {
+        filter2D(input, output, -1, kernel3);
+    }
+    else if(choice == 5)
+    {
+        filter2D(input, output, -1, kernel5);
+    }
+    else
+    {
+        cout<< "Error: Not valid choice, please select 3 or 5";
+    }
+}
+
 // Function to add Gaussian noise
 void addGaussianNoise(const Mat& input, Mat& output, double mean, double stddev) {
     Mat noise(input.size(), input.type());
@@ -58,13 +108,13 @@ int main() {
         cout << "Error: Could not load image." << endl;
         return -1;
     }
-    cout<< "Please select the number of the transformation you would like to be done to the image: Brightness & Contrast(1), Histogram equalization(2), Gaussian Blur(3), Sharpening(4), Gaussian noise(5)" <<endl;
+    cout<< "Please select the number of the transformation you would like to be done to the image: Brightness & Contrast(1), Histogram equalization(2), Gaussian Blur(3), Sharpening(4), Gaussian noise(5), Box Blur(6)" <<endl;
     cin>> transformation;
     try
     {
-        if(transformation>5 || transformation<1 || cin.fail())
+        if(transformation>6 || transformation<1 || cin.fail())
         {
-            throw "Error: Value entered is not a number between 1-5";
+            throw "Error: Value entered is not a number between 1-6";
         }
     }
     catch(const char* err)
@@ -130,6 +180,7 @@ int main() {
         {
             // Sharpening
             Mat sharpenedImage;
+            imshow("Original Image", image);
             sharpenImage(image, sharpenedImage);
             imshow("Sharpened Image", sharpenedImage);
             break;
@@ -139,8 +190,17 @@ int main() {
             // Adding Gaussian noise
             Mat noisyImage;
             double mean = 0, stddev = 30; // Noise parameters
+            imshow("Original Image", image);
             addGaussianNoise(image, noisyImage, mean, stddev);
             imshow("Gaussian Noise Added", noisyImage);
+            break;
+        }
+        case 6:
+        {
+            Mat boxBlurred;
+            boxBlur(image, boxBlurred);
+            imshow("Original Image", image);
+            imshow("Box Blurred Image", boxBlurred);
             break;
         }
     }
